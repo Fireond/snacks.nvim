@@ -1,6 +1,8 @@
-(inline_formula) @image.content @image
+(inline_formula
+  (#set! image.inline)) @image.content @image
 
-(displayed_equation) @image.content @image
+(displayed_equation
+  (#set! image.block)) @image.content @image
 (math_environment) @image.content @image
 
 (graphics_include

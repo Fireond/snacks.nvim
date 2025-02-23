@@ -16,6 +16,7 @@ local M = {}
 ---@field pos? TSMatch
 ---@field src? TSMatch
 ---@field content? TSMatch
+---@field math_type? string
 
 ---@class snacks.image.match
 ---@field id string
@@ -24,6 +25,7 @@ local M = {}
 ---@field content? string
 ---@field ext? string
 ---@field range? Range4
+---@field math_type? string
 
 local META_EXT = "image.ext"
 local META_SRC = "image.src"
@@ -78,6 +80,10 @@ M.transforms = {
       color = fg:upper():sub(2),
       content = content,
     }, { indent = true, prefix = "$" })
+    img.math_type = "block" -- 默认按块公式
+    if content:match("^%$[^$]") or content:match("^\\%(") then
+      img.math_type = "inline"
+    end
   end,
 }
 
@@ -182,6 +188,11 @@ function M.find(buf, from, to)
             ---@diagnostic disable-next-line: assign-type-mismatch
             ctx[field] = { node = nodes[1], meta = meta[id] or {} }
           end
+          if name == "image.inline" then
+            ctx.math_type = "inline"
+          elseif name == "image.block" then
+            ctx.math_type = "block"
+          end
         end
         ret[#ret + 1] = M._img(ctx)
       end
@@ -240,6 +251,7 @@ function M._img(ctx)
       fd:close()
     end
   end
+  img.math_type = img.math_type or "inline"
   return img
 end
 
@@ -337,6 +349,7 @@ function M.inline(buf)
     local found = {} ---@type table<string, boolean>
     for _, i in ipairs(M.find(buf)) do
       local img = imgs[i.id] ---@type snacks.image.Placement?
+      local is_block = i.math_type == "block"
       if img and img.img.src ~= i.src then
         img:close()
         img = nil
@@ -349,7 +362,7 @@ function M.inline(buf)
           Snacks.config.merge({}, Snacks.image.config.doc, {
             pos = i.pos,
             range = i.range,
-            inline = true,
+            inline = not is_block,
           })
         )
         imgs[i.id] = img
